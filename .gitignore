@@ -1,0 +1,11 @@
+._*
+/node_modules/
+package-lock.json
+pnpm-lock.yaml
+
+.eslintrc
+.eslintrc.*
+
+.vscode
+
+/build
