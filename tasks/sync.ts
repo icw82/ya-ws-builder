@@ -17,6 +17,20 @@ interface IFileObject {
     stats: Stats;
 }
 
+const exts = [
+    'js',
+    'ts',
+    'tsx',
+
+    'css',
+    'less',
+
+    'tmpl',
+    'wml',
+    'xhtml',
+
+    'svg',
+];
 
 /** Возвращает glob и набор относительных путей к заданным целям */
 const getGlobOfSources = (
@@ -36,7 +50,7 @@ const getGlobOfSources = (
 
         const base = rel.replace(/\\/g, '/');
 
-        glob.add(`${ base }/**/*.(ts|tsx|js|less|css|xhtml|tmpl|wml)`);
+        glob.add(`${ base }/**/*.(${ exts.join('|') })`);
         glob.add(`!${ base }/**/node_modules/**/*`);
     });
 
@@ -65,7 +79,7 @@ const getGlobOfModulesInDest = (
     ): void => {
         const rel = join(relPathToResources, module).replace(/\\/g, '/');
 
-        glob.add(`${ rel }/**/*.(ts|tsx|js|less|css|xhtml|tmpl|wml)`);
+        glob.add(`${ rel }/**/*.(${ exts.join('|') })`);
         glob.add(`!${ rel }/**/node_modules/**/*`);
         glob.add(`!${ rel }/**/*.min.*`);
     });
