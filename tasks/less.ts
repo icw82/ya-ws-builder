@@ -23,6 +23,7 @@ const getCompileLessTask = (
 ): any => src(glob)
     // .pipe(insert.prepend('@import \'SBIS3.CONTROLS/themes/online/_variables\';'))
     .pipe(insert.prepend('@import \'Controls-default-theme/_mixins\';'))
+    .pipe(insert.prepend('@themeName: \'SHIT\';'))
     .pipe(gulpLess({
         paths: [
             settings.destModulesPath,

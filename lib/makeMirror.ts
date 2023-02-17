@@ -1,4 +1,4 @@
-import { promises as fs, accessSync, lstatSync } from 'node:fs';
+import { promises as fs } from 'node:fs';
 import { relative, resolve } from 'node:path';
 
 import { makeSymLink } from './makeSymLink';
@@ -19,14 +19,24 @@ const makeMirror = async (
 
             // console.log('Unlinked (замена файла на ссылку):', resolve(dest));
 
-            await makeSymLink(dest, src);
+            try {
+                await makeSymLink(dest, src);
+            } catch (error) {
+                console.log(' → isFile', destFileStats);
+                throw error;
+            }
         } else if (destFileStats.isDirectory()) {
             // Замена папки на ссылку
             await fs.rm(dest, { recursive: true, force: true });
 
             // console.log('Unlinked (замена папки на ссылку):', resolve(dest));
 
-            await makeSymLink(dest, src);
+            try {
+                await makeSymLink(dest, src);
+            } catch (error) {
+                console.log(' → isDirectory', destFileStats);
+                throw error;
+            }
         } else if (destFileStats.isSymbolicLink()) {
             // Оставляет только ту ссылку в билде,
             // что ссылается на исходный файл
@@ -41,7 +51,12 @@ const makeMirror = async (
                 // console.log('Unlinked (левая ссылка):', resolve(dest));
                 console.log(symlinkTarget);
 
-                await makeSymLink(dest, src);
+                try {
+                    await makeSymLink(dest, src);
+                } catch (error) {
+                    console.log(' → isSymbolicLink', destFileStats);
+                    throw error;
+                }
             }
         } else {
             console.log('Какой ещё может быть вариант?');
@@ -50,7 +65,12 @@ const makeMirror = async (
     } catch (error) {
         // По пути dest ничего нет
         if (error.code === 'ENOENT') {
-            await makeSymLink(dest, src);
+            try {
+                await makeSymLink(dest, src);
+            } catch (error) {
+                console.log(' → ENOENT', dest);
+                throw error;
+            }
 
             // console.error(error);
             // console.log('dest →', dest);

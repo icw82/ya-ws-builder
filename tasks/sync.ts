@@ -8,6 +8,8 @@ import { settings, ISettings } from './../lib/settings';
 import { is } from './../lib/is';
 import { makeMirror } from './../lib/makeMirror';
 import { CONVERTING, ORIGIN } from './../lib/constants';
+import { unlinkEmptySymlink } from './../lib/unlinkEmptySymlink';
+import { getDirectoriesOnly } from './../lib/getDirectoriesOnly';
 
 
 interface IFileObject {
@@ -180,7 +182,15 @@ const syncSourceFile = async (
         join(settings.destModulesPath, pathInModule),
     );
 
-    await makeMirror(path, dest);
+    try {
+        await makeMirror(path, dest);
+    } catch (error) {
+        console.error('Ошибка при выполнении makeMirror');
+        console.log('path:', path);
+        console.log('dest:', dest);
+
+        throw error;
+    }
 
     // На данном этапе создана ссылка на оригинальный файл
     // NOTE: ссылки нужны для работы ts в vs code, так как импорты часто указаны
@@ -211,15 +221,11 @@ const checkDestFile = async (
 ): Promise<void> => {
     const lstat = await fs.lstat(file.path);
 
-    if (lstat.isSymbolicLink()) {
-        const linkString = await fs.readlink(file.path);
+    if (await unlinkEmptySymlink(file.path, lstat)) {
+        return;
+    }
 
-        if (!is.file(linkString)) {
-            await fs.unlink(file.path);
-
-            console.log('Unlinked (Протухшая ссылка):', resolve(file.path));
-        }
-    } else if (lstat.isFile()) {
+    if (lstat.isFile()) {
         const ext = extname(file.name);
 
         if (['.ts', '.tsx', '.less'].includes(ext)) {
@@ -234,17 +240,35 @@ const sync = async (): Promise<void> => {
     // console.log('settings', settings);
 
     {
-        // Очистка сборки от битых ссылок
+        console.log('Очистка сборки от битых ссылок на директории');
+
+        const directories = getDirectoriesOnly(settings.destModulesPath, true);
+
+        await Promise.all(directories.map(
+            async (dir: string): Promise<void> => {
+                const path = join(settings.destModulesPath, dir);
+
+                const lstat = await fs.lstat(path);
+
+                await unlinkEmptySymlink(path, lstat);
+            }
+        ));
+    }
+
+    {
+        console.log('Очистка сборки от битых ссылок на файлы');
 
         const files = await globby(destGlob, {
             onlyFiles: false,
             stats: true,
-        }) as unknown[];
+        }) as unknown[] as IFileObject[];
 
         await Promise.all(files.map(checkDestFile));
     }
 
     {
+        console.log('Синхронизация файлов');
+
         const files = await globby(glob, {
             onlyFiles: true,
         }) as unknown[];
@@ -253,6 +277,7 @@ const sync = async (): Promise<void> => {
     }
 };
 
+// TODO: Очистка пустых папок в режиме наблюдения
 const syncWatch = (): void => {
     const watcher = watch(glob);
 

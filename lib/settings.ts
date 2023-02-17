@@ -70,6 +70,9 @@ const getSettings = (argv: IArguments): ISettings => {
 
     const baseDir = resolve();
     const params = getParams(argv);
+
+    console.log('Конфигурация', params);
+
     const modules = getModules(params.targets);
 
     const dest = resolve(relative(baseDir, params.dest));

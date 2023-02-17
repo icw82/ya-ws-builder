@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 
 import { is } from './is';
+import { unlinkEmptySymlink } from './unlinkEmptySymlink';
 
 
 const makeSymLink = async (
@@ -14,7 +15,12 @@ const makeSymLink = async (
 
     // Прокладывание дороги
     if (!is.directory(dir)) {
-        await fs.mkdir(dir, { recursive: true });
+        try {
+            await fs.mkdir(dir, { recursive: true });
+        } catch (error) {
+            console.error('Ошибка при попытке создания директории');
+            throw error;
+        }
     }
 
     if (is.directory(target)) {

@@ -12,7 +12,7 @@ import { settings } from '../lib/settings';
 const tsProject = createProject({
     alwaysStrict: true,
     baseUrl: settings.destModulesPath,
-    // importHelpers: true,
+    importHelpers: true,
     isolatedModules: true,
     lib: [
         'es2015',
@@ -20,7 +20,7 @@ const tsProject = createProject({
         'es2017',
         'dom',
     ],
-    jsx: 'react',
+    jsx: 'react-jsxdev',
     module: 'amd',
     moduleResolution: 'Classic', // 'node'
     // noUnusedLocals: true,
