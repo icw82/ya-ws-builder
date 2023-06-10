@@ -32,7 +32,7 @@ const tsProject = createProject({
     // Пока морда стенда крутится на старых нодах типа 12 версии,
     // красота типа ?. ?? не будет работать
     target: settings.output || 'es2020',
-
+    // strict: true,
     // declaration: true,
     // noImplicitReturns: true,
     // noUnusedParameters: false,
