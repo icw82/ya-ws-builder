@@ -5,7 +5,7 @@
 
 //     const sources = [
 //         'eo/client/EOREQ/**/*.js',
-//     ].map(item => `/mnt/c/tz/${ item }`);
+//     ].map(item => `/mnt/c/Saby/${ item }`);
 
 //     const buildDocs = (cb) => {
 //         const config = require('./jsdoc.json');

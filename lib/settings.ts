@@ -1,15 +1,17 @@
 import { resolve, join, relative } from 'node:path';
 import { readdirSync, mkdirSync } from 'node:fs';
+import { argv } from 'node:process';
 
-import { argv } from 'yargs';
+import yargsFunc from 'yargs'
+import { hideBin } from 'yargs/helpers'
 
 // import { env } from 'process';
 // import * as chalk from 'chalk';
 // import { stdin as input, stdout as output } from 'node:process';
 // import { createInterface } from 'node:readline';
 
-import { getParams, IArguments, IParams } from './arguments';
-import { is } from './is';
+import { getParams, IArguments, IParams } from './arguments.js';
+import { is } from './is.js';
 
 
 interface ISettings extends IParams {
@@ -32,9 +34,8 @@ interface ISettings extends IParams {
     baseDir: string;
 }
 
-
-// const chalk = new Chalk();
-// const rl = createInterface({ input, output });
+// // const chalk = new Chalk();
+// // const rl = createInterface({ input, output });
 
 const IGNORE = [
     '.vscode',
@@ -67,7 +68,6 @@ const getModules = (
 
 /** Возвращает настройки для сборщика */
 const getSettings = (argv: IArguments): ISettings => {
-
     const baseDir = resolve();
     const params = getParams(argv);
 
@@ -140,7 +140,61 @@ const getSettings = (argv: IArguments): ISettings => {
     };
 };
 
-const settings = getSettings(argv as unknown as IArguments);
+const yargs = yargsFunc(hideBin(argv));
+
+yargs
+    .scriptName('npm run build')
+    .usage('Использование: $0 -- [ --опция <value> ]')
+    .wrap(yargs.terminalWidth())
+    .help();
+
+// yargs.example([
+//     [
+//         `$0 -- \`
+//         --target 'C:\work\online\root\client' \`
+//         --target 'C:\work\online\eo\client' \`
+//         --sdk 'C:\Users\%USERNAME%\SBISPlatformSDK\SBISPlatformSDK_241000' \`
+//         --dest 'C:\work\online\build' \`
+//         --distro 'C:\work\online\version\24.1100\ext' \`
+//         --output 'es5'
+//     `],
+// ]);
+
+yargs
+    .option('target', {
+        alias: 't',
+        demandOption: true,
+        // default: '/default-way',
+        describe: 'Один или несколько рабочих каталогов «client», ' +
+            'содержащие модули фронтенда',
+        type: 'array'
+    })
+    .option('dest', {
+        demandOption: true,
+        // default: '/default-way',
+        describe: 'Путь сборки (куда обычно разворачивается стенд)',
+        type: 'string'
+    })
+    .option('distro', {
+        // demandOption: true,
+        // default: '/default-way',
+        describe: 'Расположение распакованного дистрибутива',
+        type: 'string'
+    })
+    .option('sdk', {
+        // demandOption: true,
+        // default: '/default-way',
+        describe: 'Расположение SDK',
+        type: 'string'
+    })
+    .option('output', {
+        // demandOption: true,
+        default: 'es2020',
+        describe: 'Версия ECMAScript на выходе',
+        type: 'string'
+    })
+
+const settings = getSettings(yargs.argv as unknown as IArguments);
 
 
 export {

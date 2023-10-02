@@ -18,16 +18,23 @@ import {
     watchLess,
 } from './less';
 
+import {
+    compileLang,
+    watchLang,
+} from './langs';
+
 
 const compile = parallel(
     compileTypescript,
     compileLess,
+    // compileLang,
 );
 
 const watch = parallel(
     syncWatch,
     watchTypescript,
     watchLess,
+    watchLang,
 );
 
 const defaultTask = series(

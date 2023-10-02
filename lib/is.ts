@@ -1,4 +1,4 @@
-import { existsSync, statSync } from 'fs';
+import { existsSync, statSync } from 'node:fs';
 
 
 const is = {
