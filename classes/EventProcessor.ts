@@ -3,19 +3,17 @@ import type { WatchEventType } from 'node:fs';
 
 import { calculateFileHash } from '../lib/calculateFileHash.js';
 
-import { FileIndex } from './FileIndex';
-import type { IFileIndexItem } from './FileIndex';
+import {
+    FileIndex,
+    FileIndexEventType,
+    IFileIndexEvent,
+    IFileIndexItem,
+} from './FileIndex.js';
 
-
-enum fsEventType {
-    added = 1,
-    changed = 2,
-    removed = 0,
-}
 
 interface IFsEvent {
     // path: string;
-    type: fsEventType;
+    type: FileIndexEventType;
     ts: number;
 
     hash?: string;
@@ -26,7 +24,10 @@ interface IFsEvent {
 interface IEventProcessorParams {
     debounceTime: number;
     fileIndex: FileIndex;
+
+    onChanges: (changes: IFileIndexEvent) => Promise<void>;
 }
+
 
 class EventProcessor {
     readonly debounceTime: number;
@@ -36,25 +37,29 @@ class EventProcessor {
     #timer: NodeJS.Timeout | null;
     #events: Map<string, WatchEventType> = new Map();
 
+    #onChanges: (changes: IFileIndexEvent) => Promise<void>;
+
     constructor({
         debounceTime,
         fileIndex,
+        onChanges,
     }: IEventProcessorParams) {
         this.debounceTime = debounceTime;
         this.fileIndex = fileIndex;
 
         this.handleWatchEvent = this.handleWatchEvent.bind(this);
+        this.#onChanges = onChanges;
     }
 
     async #process(): Promise<void> {
         if (this.#pending) {
-            throw new Error('Already processing changes');
+            throw new Error('Изменения уже обрабатываются');
         }
 
         this.#pending = true;
 
         if (this.#events.size > 100) {
-            console.warn('DEBUG: Too many events:', this.#events.size);
+            console.warn('DEBUG: Слишком много событий', this.#events.size);
         }
 
         const changes = new Map<string, IFsEvent>();
@@ -87,7 +92,7 @@ class EventProcessor {
 
             if (event === 'change') {
                 if (stat.mtimeMs === index?.modified) {
-                    console.log('Без изменений (время):', path);
+                    // console.log('Без изменений (время):', path);
 
                     return;
                 }
@@ -99,7 +104,7 @@ class EventProcessor {
                     // console.log('Изменение директории:', path);
 
                     changes.set(path, {
-                        type: fsEventType.changed,
+                        type: FileIndexEventType.changed,
                         isFolder,
                         ts
                     });
@@ -121,7 +126,7 @@ class EventProcessor {
                 // console.log('Изменение файла:', path);
 
                 changes.set(path, {
-                    type: fsEventType.changed,
+                    type: FileIndexEventType.changed,
                     isFolder,
                     hash,
                     ts
@@ -135,7 +140,7 @@ class EventProcessor {
                     const hash = isFolder ? await calculateFileHash(path) : void 0;
 
                     changes.set(path, {
-                        type: fsEventType.added,
+                        type: FileIndexEventType.added,
                         isFolder,
                         hash,
                         ts
@@ -149,7 +154,7 @@ class EventProcessor {
                     // console.log('Удаление:', path);
 
                     changes.set(path, {
-                        type: fsEventType.removed,
+                        type: FileIndexEventType.removed,
                         isFolder,
                         ts
                     });
@@ -176,10 +181,29 @@ class EventProcessor {
 
         // Запись в индекс
 
-        changes.forEach((change: IFsEvent, path: string): void => {
+        // Разделение на чанки, чтобы не вызывать все изменения одновременно?
+        // Сколько должно быть «потоков?»
 
+        // Вызов обратной функции для каждого случая
+        for (const [path, event] of changes.entries()) {
+            await this.#onChanges({
+                isFolder: event.isFolder,
+                path,
+                type: event.type,
+            });
+        }
 
-        });
+        this.#events.clear();
+
+        // this.fileIndex.save();
+
+        // changes.forEach((change: IFsEvent, path: string): void => {
+
+        // });
+
+        // this.#onChanges(changes.map((item: IFsEvent, ) => ({
+
+        // })));
     }
 
     #processDebounced() {

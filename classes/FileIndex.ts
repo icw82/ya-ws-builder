@@ -6,6 +6,7 @@ import { glob } from 'glob';
 import { calculateFileHash } from '../lib/calculateFileHash.js';
 
 
+
 interface IFileIndexParams {
     path: string;
     pattern: string | string[];
@@ -16,6 +17,17 @@ interface IFileIndexItem {
     hash: string;
 }
 
+interface IFileIndexEvent {
+    isFolder: boolean;
+    path: string;
+    type: FileIndexEventType;
+}
+
+enum FileIndexEventType {
+    added = 1,
+    changed = 2,
+    removed = 0,
+}
 
 class FileIndex {
     #index: Map<string, IFileIndexItem> = new Map();
@@ -60,7 +72,8 @@ class FileIndex {
         this.#index.set(path, value);
     }
 
-    async update(): Promise<Set<string>> {
+    /** Полностью обновить индекс (без сохранения в файл) */
+    async update(): Promise<Set<IFileIndexEvent>> {
         const list = await glob(this.pattern, {
             ignore: 'node_modules/**',
             stat: true,
@@ -80,7 +93,9 @@ class FileIndex {
             });
         }
 
-        const changes: Set<string> = new Set();
+        const changes: Set<IFileIndexEvent> = new Set();
+
+        // TODO: !!! Есть ли тут информация об удалении файла?
 
         newIndex.forEach((item: IFileIndexItem, path: string): void => {
             const prev = this.#index.get(path);
@@ -90,7 +105,11 @@ class FileIndex {
                 prev.modified !== item.modified ||
                 prev.hash !== item.hash
             ) {
-                changes.add(path);
+                changes.add({
+                    isFolder: false,
+                    path,
+                    type: FileIndexEventType.changed,
+                });
                 this.#index.set(path, item);
             }
         });
@@ -98,6 +117,7 @@ class FileIndex {
         return changes;
     }
 
+    /** Сохранение индекса в файл */
     save() {
         const data = [...this.#index].map(([path, stats]) => {
             return `${ path }\t${ stats.modified }\t${ stats.hash }`;
@@ -109,9 +129,11 @@ class FileIndex {
 
 
 export {
-    FileIndex
+    FileIndex,
+    FileIndexEventType,
 }
 
 export type {
-    IFileIndexItem
+    IFileIndexEvent,
+    IFileIndexItem,
 }

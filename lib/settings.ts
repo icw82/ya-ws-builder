@@ -2,6 +2,7 @@ import { resolve, join, relative } from 'node:path';
 import { readdirSync, mkdirSync } from 'node:fs';
 import { argv } from 'node:process';
 
+import { default as ts } from 'typescript';
 import yargsFunc from 'yargs'
 import { hideBin } from 'yargs/helpers'
 
@@ -191,7 +192,20 @@ yargs
         // demandOption: true,
         default: 'es2020',
         describe: 'Версия ECMAScript на выходе',
-        type: 'string'
+        // type: string,
+
+        // ts.ScriptTarget
+        choices: [
+            'es3',
+            'es5',
+            'es2015',
+            'es2016',
+            'es2017',
+            'es2018',
+            'es2019',
+            'es2020',
+            'es2021',
+        ]
     })
 
 const settings = getSettings(yargs.argv as unknown as IArguments);

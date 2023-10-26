@@ -9,9 +9,8 @@
 
 ## Установка
 
-1. `npm i gulp -g`
-2. `npm i typescript -g`
-3. `npm i`
+1. `npm i typescript -g`
+2. `npm i`
 
 <!-- Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Unrestricted -Force; -->
 
@@ -30,7 +29,7 @@
 ### Пример PowerShell
 
 ```powershell
-gulp `
+npm run build -- `
   --target 'C:\work\online\root\client' `
   --target 'C:\work\online\eo\client' `
   --sdk 'C:\Users\%USERNAME%\SBISPlatformSDK\SBISPlatformSDK_231000' `
