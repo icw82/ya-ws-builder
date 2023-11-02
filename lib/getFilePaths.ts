@@ -1,9 +1,8 @@
-import { join, relative, resolve, extname, basename } from 'node:path';
+import { join, relative, resolve, extname } from 'node:path';
+import { Target } from './arguments.js';
 
-// import { resolve, relative, join, dirname } from 'node:path';
-
-import { ISettings } from '../lib/settings';
-import { CONVERTING } from './constants';
+import { CONVERTING } from './constants.js';
+import { ISettings } from './settings.js';
 
 
 interface IFilePaths {
@@ -20,8 +19,9 @@ interface IFilePaths {
     targetRepository: string;
 }
 
-const getDest = (commonPath: string, settings: ISettings): string => {
-    const dest = join(settings.destModulesPath, commonPath).replace(/\\/g, '/');
+const getDest = (commonPath: string, destModulesPath: string): string => {
+
+    const dest = join(destModulesPath, commonPath).replace(/\\/g, '/');
 
     const extension = extname(commonPath).slice(1);
     const isConvertible = CONVERTING.has(extension);
@@ -39,18 +39,18 @@ const getFilePaths = (
 ): IFilePaths => {
     const targetRepository = [
         ...settings.targets,
-    ].find((target: string): boolean =>
-        !relative(target, path).includes('..')
+    ].find(([ , target]: [string, Target]): boolean =>
+        !relative(target.toString(), path).includes('..')
     );
 
     const commonPath =
-        relative(targetRepository, path).replace(/\\/g, '/');
+        relative(targetRepository[0], path).replace(/\\/g, '/');
 
     return {
         absolute: resolve(path).replace(/\\/g, '/'),
         commonPath,
-        dest: getDest(commonPath, settings),
-        targetRepository,
+        dest: getDest(commonPath, settings.destModulesPath),
+        targetRepository: targetRepository[0],
     };
 };
 
@@ -58,4 +58,5 @@ const getFilePaths = (
 export {
     IFilePaths,
     getFilePaths,
+    getDest,
 };

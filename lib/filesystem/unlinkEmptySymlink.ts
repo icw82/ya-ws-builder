@@ -1,7 +1,8 @@
-import { promises as fs, Stats } from 'node:fs';
+import { readlink, unlink } from 'node:fs/promises';
+import type { Stats } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { is } from './../lib/is';
+import { is } from './is.js';
 
 
 const unlinkEmptySymlink = async (
@@ -9,13 +10,13 @@ const unlinkEmptySymlink = async (
     lstat: Stats
 ): Promise<boolean> => {
     if (lstat.isSymbolicLink()) {
-        const linkString = await fs.readlink(path);
+        const linkString = await readlink(path);
 
         if (
             !is.file(linkString) &&
             !is.directory(linkString)
         ) {
-            await fs.unlink(path);
+            await unlink(path);
 
             console.log('Unlinked (Протухшая ссылка):', resolve(path));
         }

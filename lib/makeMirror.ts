@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import { relative, resolve } from 'node:path';
 
-import { makeSymLink } from './makeSymLink';
+import { makeSymLink } from './filesystem/makeSymLink.js';
 
 
 const makeMirror = async (

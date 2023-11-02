@@ -2,7 +2,6 @@ import { resolve, join, relative } from 'node:path';
 import { readdirSync, mkdirSync } from 'node:fs';
 import { argv } from 'node:process';
 
-import { default as ts } from 'typescript';
 import yargsFunc from 'yargs'
 import { hideBin } from 'yargs/helpers'
 
@@ -11,13 +10,13 @@ import { hideBin } from 'yargs/helpers'
 // import { stdin as input, stdout as output } from 'node:process';
 // import { createInterface } from 'node:readline';
 
-import { getParams, IArguments, IParams } from './arguments.js';
-import { is } from './is.js';
+import { getParams, IArguments, IParams, ITargets, Target } from './arguments.js';
+import { is } from './filesystem/is.js';
 
 
 interface ISettings extends IParams {
     /** Список модулей, находящихся в целевых директориях */
-    modules: Map<string, string>;
+    modules: Map<string, Target>;
 
     /** Путь до развёрнутого стенда */
     dest: string;
@@ -47,17 +46,18 @@ const IGNORE = [
  * @param targets список целевых директорий
  */
 const getModules = (
-    targets: Set<string>,
-): Map<string, string> => {
-    const modules = new Map() as Map<string, string>;
+    targets: ITargets,
+): Map<string, Target> => {
+    const modules = new Map() as Map<string, Target>;
 
-    targets.forEach((target: string): void => {
-        const list = readdirSync(target);
+    targets.forEach((target: Target): void => {
+        const list = readdirSync(target.toString());
 
         list.forEach((name: string): void => {
             if (
                 !IGNORE.includes(name) &&
-                !is.file(join(target, name)) // не is.directory, может быть ещё не создана
+                // не is.directory, может быть ещё не создана
+                !is.file(join(target.toString(), name))
             ) {
                 modules.set(name, target);
             }

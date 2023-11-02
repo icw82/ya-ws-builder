@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 
@@ -26,13 +27,39 @@ interface IParams {
     sdkPath: string;
 
     /** Список целевых директорий */
-    targets: Set<string>;
+    targets: ITargets;
 
     /** Версия ES на выходе */
     output?: string;
 
     /** Расположение дистрибутива (папка или .zip) */
     distro?: string;
+}
+
+type ITargets = Map<string, Target>;
+
+/** Целевая директория */
+class Target {
+    #value: string;
+    get value(): string {
+        return this.#value;
+    }
+
+    constructor(value: string) {
+        this.#value = value;
+    }
+
+    get hash(): string {
+        const hashSum = createHash('sha256');
+
+        hashSum.update(this.#value);
+
+        return hashSum.digest('hex');
+    }
+
+    toString(): string {
+        return this.value;
+    }
 }
 
 
@@ -127,7 +154,11 @@ const getParams = (args: IArguments): IParams => {
     const result: IParams = {
         dest: args.dest ?? config.dest,
         sdkPath: args.sdk ?? config.sdk,
-        targets: new Set(targets),
+        targets: targets.reduce((result, item: string): ITargets => {
+            result.set(item, new Target(item));
+
+            return result;
+        }, new Map()),
         distro: args.distro ?? config.distro,
         output: args.output ?? config.output,
     };
@@ -138,7 +169,11 @@ const getParams = (args: IArguments): IParams => {
 
 export {
     getParams,
+    Target,
+};
 
+export type {
     IArguments,
     IParams,
-};
+    ITargets,
+}

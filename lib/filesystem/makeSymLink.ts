@@ -1,8 +1,8 @@
 import { promises as fs } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 
-import { is } from './is';
-import { unlinkEmptySymlink } from './unlinkEmptySymlink';
+import { is } from './is.js';
+// import { unlinkEmptySymlink } from './unlinkEmptySymlink.js';
 
 
 const makeSymLink = async (

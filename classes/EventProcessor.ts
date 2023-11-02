@@ -1,240 +1,277 @@
-import { existsSync, statSync, } from 'node:fs';
-import type { WatchEventType } from 'node:fs';
+// import { existsSync, statSync, } from 'node:fs';
+// import type { WatchEventType } from 'node:fs';
+
+
+// import { glob } from 'glob';
+
+// import { calculateFileHash } from '../lib/calculateFileHash.js';
+
+// import {
+//     FileIndex,
+//     FileIndexEventType,
+//     IFileIndexEvent,
+//     IFileIndexItem,
+// } from './FileWatcher.js';
 
-import { calculateFileHash } from '../lib/calculateFileHash.js';
 
-import {
-    FileIndex,
-    FileIndexEventType,
-    IFileIndexEvent,
-    IFileIndexItem,
-} from './FileIndex.js';
+// interface IFsEvent {
+//     // path: string;
+//     type: FileIndexEventType;
+//     ts: number;
 
+//     hash?: string;
+//     isFolder?: boolean;
+// };
 
-interface IFsEvent {
-    // path: string;
-    type: FileIndexEventType;
-    ts: number;
 
-    hash?: string;
-    isFolder?: boolean;
-};
+// interface IEventProcessorParams {
+//     debounceTime: number;
+//     fileIndex: FileIndex;
 
+//     /**
+//      * Обработчик изменений.
+//      *
+//      * Результат True — говорит о том, что изменения успешно обработаны
+//      * и нужно обновить индекс.
+//      */
+//     onChanges: (changes: IFileIndexEvent) => Promise<boolean>;
+// }
 
-interface IEventProcessorParams {
-    debounceTime: number;
-    fileIndex: FileIndex;
 
-    onChanges: (changes: IFileIndexEvent) => Promise<void>;
-}
+// class EventProcessor {
+//     readonly debounceTime: number;
+//     readonly fileIndex: FileIndex;
 
+//     #pending: boolean;
+//     #timer: NodeJS.Timeout | null;
+//     #events: Map<string, WatchEventType> = new Map();
 
-class EventProcessor {
-    readonly debounceTime: number;
-    readonly fileIndex: FileIndex;
+//     #onChanges: (changes: IFileIndexEvent) => Promise<boolean>;
 
-    #pending: boolean;
-    #timer: NodeJS.Timeout | null;
-    #events: Map<string, WatchEventType> = new Map();
+//     constructor({
+//         debounceTime,
+//         fileIndex,
+//         onChanges,
+//     }: IEventProcessorParams) {
+//         this.debounceTime = debounceTime;
+//         this.fileIndex = fileIndex;
 
-    #onChanges: (changes: IFileIndexEvent) => Promise<void>;
+//         this.handleWatchEvent = this.handleWatchEvent.bind(this);
+//         this.#onChanges = onChanges;
+//     }
 
-    constructor({
-        debounceTime,
-        fileIndex,
-        onChanges,
-    }: IEventProcessorParams) {
-        this.debounceTime = debounceTime;
-        this.fileIndex = fileIndex;
+//     async #process(): Promise<void> {
+//         if (this.#pending) {
+//             throw new Error('Изменения уже обрабатываются');
+//         }
 
-        this.handleWatchEvent = this.handleWatchEvent.bind(this);
-        this.#onChanges = onChanges;
-    }
+//         this.#pending = true;
 
-    async #process(): Promise<void> {
-        if (this.#pending) {
-            throw new Error('Изменения уже обрабатываются');
-        }
+//         if (this.#events.size > 100) {
+//             console.warn('DEBUG: Слишком много событий', this.#events.size);
+//         }
 
-        this.#pending = true;
+//         const changes = new Map<string, IFsEvent>();
 
-        if (this.#events.size > 100) {
-            console.warn('DEBUG: Слишком много событий', this.#events.size);
-        }
+//         await Promise.all([...this.#events.entries()].map(async (
+//             [path, event]: [string, WatchEventType]
+//         ): Promise<void> => {
+//             this.#events.delete(path);
 
-        const changes = new Map<string, IFsEvent>();
+//             const ts = Date.now();
+//             const stat = existsSync(path) ? statSync(path) : null;
+//             const index: IFileIndexItem = this.fileIndex.get(path) || {
+//                 modified: 0,
+//                 hash: '',
+//             };
+//             const isFolder = stat ? stat.isDirectory() : void 0;
 
-        await Promise.all([...this.#events.entries()].map(async (
-            [path, event]: [string, WatchEventType]
-        ): Promise<void> => {
-            this.#events.delete(path);
+//             /*
+//                 1) Изменение файла
+//                     1.1) Переименование
+//                     1.2) Изменение внутренностей
+//                 2) Удаление файла
+//                 3) Добавление файла
+//                 4) Перенос файла (слияние 2 и 3)
 
-            const ts = Date.now();
-            const stat = existsSync(path) ? statSync(path) : null;
-            const index: IFileIndexItem = this.fileIndex.get(path) || {
-                modified: 0,
-                hash: '',
-            };
-            const isFolder = stat ? stat.isDirectory() : void 0;
+//                 5) Переименование директории
+//                 6) Удаление директории
+//                 7) Перенос директории
+//             */
 
-            /*
-                1) Изменение файла
-                    1.1) Переименование
-                    1.2) Изменение внутренностей
-                2) Удаление файла
-                3) Добавление файла
-                4) Перенос файла (слияние 2 и 3)
+//             if (event === 'change') {
+//                 if (stat.mtimeMs === index?.modified) {
+//                     // console.log('Без изменений (время):', path);
 
-                5) Переименование директории
-                6) Удаление директории
-                7) Перенос директории
-            */
+//                     return;
+//                 }
 
-            if (event === 'change') {
-                if (stat.mtimeMs === index?.modified) {
-                    // console.log('Без изменений (время):', path);
+//                 index.modified = stat.mtimeMs;
+//                 this.fileIndex.set(path, index);
 
-                    return;
-                }
+//                 if (isFolder) {
+//                     // console.log('Изменение директории:', path);
 
-                index.modified = stat.mtimeMs;
-                this.fileIndex.set(path, index);
+//                     changes.set(path, {
+//                         type: FileIndexEventType.changed,
+//                         isFolder,
+//                         ts
+//                     });
 
-                if (isFolder) {
-                    // console.log('Изменение директории:', path);
+//                     return;
+//                 }
 
-                    changes.set(path, {
-                        type: FileIndexEventType.changed,
-                        isFolder,
-                        ts
-                    });
+//                 const hash = await calculateFileHash(path);
 
-                    return;
-                }
+//                 if (hash === index?.hash) {
+//                     console.log('Без изменений (хэш):', path);
 
-                const hash = await calculateFileHash(path);
+//                     return;
+//                 };
 
-                if (hash === index?.hash) {
-                    console.log('Без изменений (хэш):', path);
+//                 index.hash = hash;
+//                 this.fileIndex.set(path, index);
 
-                    return;
-                };
+//                 // console.log('Изменение файла:', path);
 
-                index.hash = hash;
-                this.fileIndex.set(path, index);
+//                 changes.set(path, {
+//                     type: FileIndexEventType.changed,
+//                     isFolder,
+//                     hash,
+//                     ts
+//                 });
 
-                // console.log('Изменение файла:', path);
+//                 return;
+//             }
 
-                changes.set(path, {
-                    type: FileIndexEventType.changed,
-                    isFolder,
-                    hash,
-                    ts
-                });
+//             if (event === 'rename') {
+//                 if (stat) {
+//                     const hash = isFolder ? await calculateFileHash(path) : void 0;
 
-                return;
-            }
+//                     changes.set(path, {
+//                         type: FileIndexEventType.added,
+//                         isFolder,
+//                         hash,
+//                         ts
+//                     });
 
-            if (event === 'rename') {
-                if (stat) {
-                    const hash = isFolder ? await calculateFileHash(path) : void 0;
+//                     // Осталось понять, это новое или переименованное;
 
-                    changes.set(path, {
-                        type: FileIndexEventType.added,
-                        isFolder,
-                        hash,
-                        ts
-                    });
+//                     return;
 
-                    // Осталось понять, это новое или переименованное;
+//                 } else {
+//                     changes.set(path, {
+//                         type: FileIndexEventType.removed,
+//                         // TODO: Нужно более надёжное определение папки
+//                         isFolder: !this.fileIndex.get(path),
+//                         ts
+//                     });
+//                 };
 
-                    return;
+//                 return;
+//             }
 
-                } else {
-                    // console.log('Удаление:', path);
+//             console.warn('Неожидаемое событие:', event, path);
+//         }));
 
-                    changes.set(path, {
-                        type: FileIndexEventType.removed,
-                        isFolder,
-                        ts
-                    });
-                };
+//         await this.#handleChanges(changes);
 
-                return;
-            }
+//         this.#pending = false;
+//     }
 
-            console.warn('Неожидаемое событие:', event, path);
-        }));
+//     async #handleChanges(changes: Map<string, IFsEvent>) {
 
-        await this.#handleChanges(changes);
+//         console.log('changes:', changes);
 
-        this.#pending = false;
-    }
+//         // Изменение папок
 
-    async #handleChanges(changes: Map<string, IFsEvent>) {
+//         const extraChanges = new Map<string, IFsEvent>();
 
-        console.log('changes:', changes);
+//         for (const [path, { type, isFolder }] of changes) {
+//             if (!isFolder) {
+//                 continue;
+//             }
 
-        // Изменение папок
+//             if (type === FileIndexEventType.removed) {
+//                 changes.delete(path);
 
-        // удаление более ранних событий
+//                 const files = await glob(
+//                     `${ path }/**/*`.replace(/\\/g, '/'),
+//                     {
+//                         ignore: 'node_modules/**',
+//                         stat: true,
+//                         nodir: true,
+//                         // windowsPathsNoEscape:true,
+//                         withFileTypes: true,
+//                     }
+//                 );
 
-        // Запись в индекс
+//                 // extraChanges.set(files)
 
-        // Разделение на чанки, чтобы не вызывать все изменения одновременно?
-        // Сколько должно быть «потоков?»
+//                 console.log('*** files', files);
 
-        // Вызов обратной функции для каждого случая
-        for (const [path, event] of changes.entries()) {
-            await this.#onChanges({
-                isFolder: event.isFolder,
-                path,
-                type: event.type,
-            });
-        }
+//                 return;
+//             }
+//         }
 
-        this.#events.clear();
+//         // удаление более ранних событий
 
-        // this.fileIndex.save();
+//         // Запись в индекс
 
-        // changes.forEach((change: IFsEvent, path: string): void => {
+//         // Разделение на чанки, чтобы не вызывать все изменения одновременно?
+//         // Сколько должно быть «потоков?»
 
-        // });
+//         // Вызов обратной функции для каждого случая
+//         for (const [path, event] of changes.entries()) {
+//             await this.#onChanges({
+//                 isFolder: event.isFolder,
+//                 path,
+//                 type: event.type,
+//             });
+//         }
 
-        // this.#onChanges(changes.map((item: IFsEvent, ) => ({
+//         this.#events.clear();
 
-        // })));
-    }
+//         this.fileIndex.saveCache();
 
-    #processDebounced() {
-        clearTimeout(this.#timer);
+//         // changes.forEach((change: IFsEvent, path: string): void => {
 
-        this.#timer = setTimeout(() => {
-            if (this.#pending) {
-                this.#processDebounced();
+//         // });
 
-                return;
-            }
+//         // this.#onChanges(changes.map((item: IFsEvent, ) => ({
 
-            this.#process();
+//         // })));
+//     }
 
-        }, this.debounceTime);
-    }
+//     #processDebounced() {
+//         clearTimeout(this.#timer);
 
-    handleWatchEvent(type: WatchEventType, path: string) {
-        if (!path) {
-            console.warn(`Событие без указания файла: ${ type }`);
+//         this.#timer = setTimeout(() => {
+//             if (this.#pending) {
+//                 this.#processDebounced();
 
-            return;
-        }
+//                 return;
+//             }
 
-        this.#events.set(path, type);
+//             this.#process();
 
-        this.#processDebounced();
-    }
-}
+//         }, this.debounceTime);
+//     }
 
+//     handleWatchEvent(type: WatchEventType, path: string) {
+//         if (!path) {
+//             console.warn(`Событие без указания файла: ${ type }`);
 
-export {
-    EventProcessor
-};
+//             return;
+//         }
+
+//         this.#events.set(path, type);
+
+//         this.#processDebounced();
+//     }
+// }
+
+
+// export {
+//     EventProcessor
+// };

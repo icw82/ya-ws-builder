@@ -1,8 +1,8 @@
 import { readdirSync } from 'node:fs';
 import { resolve, join } from 'path';
 
-import { settings } from './../lib/settings';
-import { makeMirror } from './../lib/makeMirror';
+import { settings } from './settings.js';
+import { makeMirror } from './makeMirror.js';
 
 
 const syncDistro = async (): Promise<void> => {
@@ -13,8 +13,6 @@ const syncDistro = async (): Promise<void> => {
     const distroModulesPath = join(settings.distro, 'Модули интерфейса');
     const distroUiContent = readdirSync(distroModulesPath);
     const sdkContent = readdirSync(settings.sdkModulesPath);
-
-    // console.log('sdkContent →', sdkContent);
 
     await Promise.all(
         distroUiContent.map((item: string): Promise<void> => {

@@ -5,11 +5,11 @@ import { watch } from 'gulp';
 import globby = require('globby');
 
 import { settings, ISettings } from './../lib/settings';
-import { is } from './../lib/is';
+import { is } from '../lib/filesystem/is';
 import { makeMirror } from './../lib/makeMirror';
 import { CONVERTING, ORIGIN } from './../lib/constants';
-import { unlinkEmptySymlink } from './../lib/unlinkEmptySymlink';
-import { getDirectoriesOnly } from './../lib/getDirectoriesOnly';
+import { unlinkEmptySymlink } from '../lib/filesystem/unlinkEmptySymlink';
+import { getDirectoriesOnly } from '../lib/filesystem/getDirectoriesOnly';
 
 
 interface IFileObject {

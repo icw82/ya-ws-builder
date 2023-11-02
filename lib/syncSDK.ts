@@ -1,8 +1,8 @@
 import { readdirSync } from 'node:fs';
 import { resolve, join } from 'path';
 
-import { settings } from './../lib/settings';
-import { makeMirror } from './../lib/makeMirror';
+import { settings } from './settings.js';
+import { makeMirror } from './makeMirror.js';
 
 
 const syncSDK = async (): Promise<void> => {

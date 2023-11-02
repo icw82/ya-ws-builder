@@ -1,47 +1,59 @@
-import { default as ts } from 'typescript';
+import { CompilerOptions, default as ts } from 'typescript';
+
+const {
+    ModuleKind,
+    ModuleResolutionKind,
+    ScriptTarget,
+    transpileModule,
+} = ts;
+
+interface ITranspileOptions {
+    jsx?: CompilerOptions['jsx']
+}
 
 
-const transpile = (source: string) => {
-    const result = ts.transpileModule(
-        source,
-        {
-            compilerOptions: {
-                // alwaysStrict: true,
-                importHelpers: true,
-                isolatedModules: true,
-                lib: [
-                    'es2015',
-                    'es2016',
-                    'es2017',
-                    'dom',
-                ],
+const transpile = (
+    source: string,
+    options?: ITranspileOptions
+): string => {
+    const compilerOptions: CompilerOptions = {
+        // alwaysStrict: true,
+        importHelpers: true,
+        isolatedModules: true,
+        lib: [
+            'es2015',
+            'es2016',
+            'es2017',
+            'dom',
+        ],
 
-                // Пока морда стенда крутится на старых нодах типа 12 версии,
-                // красота типа ?. ?? не будет работать
-                target: ts.ScriptTarget.ES2020,
+        // Пока морда стенда крутится на старых нодах типа 12 версии,
+        // красота типа ?. ?? не будет работать
+        target: ScriptTarget.ES2020,
 
-                module: ts.ModuleKind.AMD,
+        module: ModuleKind.AMD,
 
-                moduleResolution: ts.ModuleResolutionKind.Classic, // node?
+        moduleResolution: ModuleResolutionKind.Classic, // node?
+        // noUnusedLocals: true,
+        // noImplicitReturns: true,
+        // noUnusedParameters: false,
+        // forceConsistentCasingInFileNames: true,
 
-                jsx: ts.JsxEmit.ReactJSXDev,
+        // paths: {
+        //     'Core/*': ['WS.Core/core/*'],
+        //     'Lib/*': ['WS.Core/lib/*'],
+        //     'Transport/*': ['WS.Core/transport/*'],
+        // },
+    };
 
-                // noUnusedLocals: true,
-                // noImplicitReturns: true,
-                // noUnusedParameters: false,
-                // forceConsistentCasingInFileNames: true,
+    if (options?.jsx) {
+        compilerOptions.jsx = options?.jsx;
+    }
 
-                // paths: {
-                //     'Core/*': ['WS.Core/core/*'],
-                //     'Lib/*': ['WS.Core/lib/*'],
-                //     'Transport/*': ['WS.Core/transport/*'],
-                // },
-            }
-        }
-    );
+    const result = transpileModule(source, { compilerOptions });
 
-    if (result.diagnostics) {
-        console.log('!!!', result.diagnostics);
+    if (result.diagnostics?.length) {
+        console.log('diagnostics!', result.diagnostics);
     }
 
     return result.outputText;
@@ -50,4 +62,8 @@ const transpile = (source: string) => {
 
 export {
     transpile,
+}
+
+export type {
+    ITranspileOptions,
 }

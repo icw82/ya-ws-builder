@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs';
 
-import less = require('less');
+import { default as less } from 'less';
 
 
 const inlineSources = async (
