@@ -1,5 +1,7 @@
 import { promises as fs } from 'node:fs';
+import { lstat } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
+import { instanceOfNodeError } from './filesystem/instanceOfNodeError.js';
 
 import { makeSymLink } from './filesystem/makeSymLink.js';
 
@@ -10,7 +12,7 @@ const makeMirror = async (
 ): Promise<void> => {
     try {
         /** Предполагаемый путь в сборке */
-        const destFileStats = await fs.lstat(resolve(dest));
+        const destFileStats = await lstat(resolve(dest));
 
         if (destFileStats.isFile()) {
             // Замена файла на ссылку
@@ -63,22 +65,26 @@ const makeMirror = async (
             console.log(destFileStats);
         }
     } catch (error) {
-        // По пути dest ничего нет
-        if (error.code === 'ENOENT') {
-            try {
-                await makeSymLink(dest, src);
-            } catch (error) {
-                console.log(' → ENOENT', dest);
-                throw error;
-            }
-
-            // console.error(error);
-            // console.log('dest →', dest);
-            // console.log('accessSync', accessSync(dest));
-
-        } else {
-            console.error(error);
+        if (!(error instanceof Error)) {
+            console.log('makeMirror 1 >>>');
+            throw error;
         }
+
+        if ('code' in error) {
+            if (error.code === 'ENOENT') {
+                try {
+                    await makeSymLink(dest, src);
+
+                    return;
+                } catch (e) {
+                    console.log(' → ENOENT', dest);
+                    throw e;
+                }
+            }
+        }
+
+        console.log('makeMirror 2 >>>', error);
+        throw error;
     }
 };
 

@@ -44,7 +44,7 @@ class FileIndexCache {
         this.#path = params.path;
         this.#targets = params.targets;
 
-        if (params.writeDebounceTime > 100) {
+        if (params.writeDebounceTime && params.writeDebounceTime > 100) {
             this.#writeDebounceTime = params.writeDebounceTime;
         }
     }
@@ -108,9 +108,9 @@ class FileIndexCache {
 
                 const values: IFileIndexCacheFormat = [
                     path,
-                    isFolder? 1 : 0,
+                    isFolder ? 1 : 0,
                     modified,
-                    hash,
+                    hash? hash : '',
                 ];
 
                 return values.join('\t');
@@ -137,7 +137,7 @@ class FileIndexCache {
 
             index.set(path, {
                 hash,
-                isFolder: !!isFolder,
+                isFolder: isFolder === '1',
                 modified: parseFloat(modified),
                 path,
                 target

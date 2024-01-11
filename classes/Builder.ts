@@ -23,7 +23,10 @@ import { FileIndexCache } from './FileIndexCache.js';
 import { ITargets, Target } from '../lib/arguments.js';
 
 
-class FileWatcher {
+// FIXME: Если в сборке уже есть папка-ссылка, то если этот модуль принадлежит
+//        целевым директориям, то нужно сначала их удалить.
+
+class Builder {
     #index: FileIndex = new FileIndex();
 
     // #hashes: Map<string, IFileIndexItem[]> = new Map();
@@ -31,7 +34,7 @@ class FileWatcher {
     #targets: ITargets;
     get targets(): ITargets { return this.#targets; };
 
-    #cache: FileIndexCache;
+    #cache: FileIndexCache | null = null;
 
     #watchers: Map<Target, ReturnType<typeof watch>> = new Map();
 
@@ -60,9 +63,18 @@ class FileWatcher {
             this.#cache = params.cache;
         }
 
-        this.#index = await this.#cache.read();
+        if (this.#cache) {
+            this.#index = await this.#cache.read();
+        }
 
-        const changes = FileWatcher.getIndexDifferences(
+        // const find = 'EOREQ\\_letter-disclaimer\\LetterDisclaimer.less';
+
+        // if (this.#index.has(find)) {
+        //     console.log(this.#index.get(find));
+        //     throw new Error('1')
+        // }
+
+        const changes = Builder.getIndexDifferences(
             this.#index,
             await this.#getNewIndex()
         );
@@ -77,7 +89,7 @@ class FileWatcher {
             return;
         }
 
-        if (params.debounceTime > 100) {
+        if (params.debounceTime && params.debounceTime > 100) {
             this.#watcherEventsProcessDebounceTime = params.debounceTime;
         }
 
@@ -139,6 +151,14 @@ class FileWatcher {
 
                 await Promise.all(fileList.map(
                     async (file: Path): Promise<void> => {
+                        if (!file.mtimeMs) {
+                            throw new TypeError(
+                                '#getNewIndex: нет mtimeMs', {
+                                    cause: file
+                                }
+                            )
+                        }
+
                         const absolutePath = file.fullpath();
                         const path = relative(target.toString(), absolutePath);
 
@@ -165,7 +185,7 @@ class FileWatcher {
     #addChanges(changes: FileIndexChanges): void {
         this.#changes.merge(changes);
 
-        console.log('#handleChangesDebounced');
+        // console.log('#handleChangesDebounced');
         this.#handleChangesDebounced();
     }
 
@@ -186,7 +206,7 @@ class FileWatcher {
         // Разделение на чанки, чтобы не вызывать все изменения одновременно?
         // Сколько должно быть «потоков?»
 
-        for (const [ , change] of this.#changes) {
+        for (const [ , change] of this.#changes.byTime()) {
             const success = await this.#onChanges(change);
 
             if (typeof success !== 'boolean') {
@@ -237,7 +257,7 @@ class FileWatcher {
         eventType
     }: {
         target: Target;
-        filename: string;
+        filename: string | null;
         eventType: WatchEventType
     }) {
         if (!target || !filename) {
@@ -286,28 +306,51 @@ class FileWatcher {
 
         const absolutePath = join(event.target.toString(), event.path);
 
-        const ts = Date.now();
-
-        let stats: Stats | null = null;
+        let stats: Stats | null;
 
         try {
             stats = await stat(absolutePath);
         } catch (error) {
-            if (error.code === 'ENOENT') {
-                // return;
+            if (typeof error === 'object' && error !== null) {
+                console.log('#processWatcherEvent', error);
+
+                if (
+                    'code' in error &&
+                    error.code === 'ENOENT'
+                ) {
+                    stats = null;
+                } else {
+                    console.log('#processWatcherEvent', error);
+
+                    throw error;
+                }
+            } else {
+                throw error;
             }
 
-            console.error(error);
         }
 
-        // const index: IFileIndexItem = this.get(absolutePath) || {
-        //     modified: 0,
-        //     hash: '',
-        // };
+        const eventTime = Date.now();
 
-        // const isFolder = stats ? stats.isDirectory() : void 0;
+        // const isFolder = stats?.isDirectory();
+
+        const changes = new FileIndexChanges();
+
+        // changes.set(event.path, {
+        //     hash: isFolder
+        //         ? null
+        //         : await calculateFileHash(absolutePath),
+        //     isFolder,
+        //     modified: stats?.mtimeMs,
+        //     path: event.path,
+        //     target: event.target,
+        //     type: event.type === 'change'
+        //         ? FileIndexEventType.added
+        //         : FileIndexEventType.changed
+        // });
 
         /*
+
             1) Изменение файла
                 1.1) Переименование
                 1.2) Изменение внутренностей
@@ -318,7 +361,12 @@ class FileWatcher {
             5) Переименование директории
             6) Удаление директории
             7) Перенос директории
+
+            Что если:
+                Удаляется директория и тут же появляется новая с файлами?
         */
+
+        this.#addChanges(changes);
     }
 
     /** Возвращает изменения, которые есть между двумя состояниями индекса */
@@ -328,12 +376,20 @@ class FileWatcher {
     ): FileIndexChanges {
         const changes = new FileIndexChanges();
 
+        // const find = 'EOREQ\\_letter-disclaimer\\LetterDisclaimer.less';
+
         const index2Clone = new Map(index2 || void 0);
 
         index1.forEach((original: IFileIndexItem, path: string): void => {
             const version = index2Clone.get(path);
 
             if (!version) {
+
+                // if (path === find) {
+                //     console.log('original', original);
+                //     throw new Error('1')
+                // }
+
                 changes.set(path, {
                     ...original,
                     type: FileIndexEventType.removed,
@@ -348,6 +404,10 @@ class FileWatcher {
                 original.modified !== version.modified ||
                 original.hash !== version.hash
             ) {
+                // if (path === find) {
+                //     throw new Error('2')
+                // }
+
                 changes.set(path, {
                     ...version,
                     type: FileIndexEventType.changed,
@@ -361,6 +421,10 @@ class FileWatcher {
 
         index2Clone.forEach((version: IFileIndexItem, path: string) => {
             const original = index1.get(path);
+
+            // if (path === find) {
+            //     throw new Error('3')
+            // }
 
             if (!original) {
                 changes.set(path, {
@@ -380,5 +444,5 @@ class FileWatcher {
 
 
 export {
-    FileWatcher,
+    Builder,
 }

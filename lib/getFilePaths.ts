@@ -43,6 +43,10 @@ const getFilePaths = (
         !relative(target.toString(), path).includes('..')
     );
 
+    if (!targetRepository) {
+        throw new Error('Не удалось определить целевую директорию');
+    }
+
     const commonPath =
         relative(targetRepository[0], path).replace(/\\/g, '/');
 

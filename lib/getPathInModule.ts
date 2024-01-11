@@ -87,7 +87,7 @@ const getGlobOfSources = (
  * @param path путь к исходному файлу
  */
  const getPathInModule = (path: string): string => {
-    let result: string;
+    let result: string | null = null;
 
     [...settings.targets].forEach(
         ([ , target]: [string, Target]): void => {
@@ -105,6 +105,12 @@ const getGlobOfSources = (
             }
         }
     );
+
+    if (!result) {
+        throw new Error(
+            'getPathInModule: Путь не найден ' + path
+        );
+    }
 
     return result;
 };

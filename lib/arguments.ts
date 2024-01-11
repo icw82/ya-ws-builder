@@ -143,24 +143,24 @@ const getParams = (args: IArguments): IParams => {
         checkParams(args);
     }
 
-    let targets: string[];
+    let targets: string[] = [];
 
     if (args.target) {
         targets = Array.isArray(args.target) ? args.target : [args.target];
-    } else {
+    } else if (config?.targets) {
         targets = config.targets;
     }
 
     const result: IParams = {
-        dest: args.dest ?? config.dest,
-        sdkPath: args.sdk ?? config.sdk,
+        dest: args.dest ?? config?.dest,
+        sdkPath: args.sdk ?? config?.sdk,
         targets: targets.reduce((result, item: string): ITargets => {
             result.set(item, new Target(item));
 
             return result;
         }, new Map()),
-        distro: args.distro ?? config.distro,
-        output: args.output ?? config.output,
+        distro: args.distro ?? config?.distro,
+        output: args.output ?? config?.output,
     };
 
     return result;

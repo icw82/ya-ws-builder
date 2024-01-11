@@ -122,7 +122,7 @@ const getSettings = (argv: IArguments): ISettings => {
 
     const distro = params.distro;
 
-    if (!is.directory(distro)) {
+    if (!distro || !is.directory(distro)) {
         console.error(
             `Не найдена папка c распакованным дистрибутивом: ${ distro }`
         );

@@ -25,8 +25,8 @@ interface IFileIndexWatchParams {
 }
 
 interface IFileIndexItem {
-    /** Хэш файла */
-    hash: string;
+    /** Хэш файла */ // TODO: Нужно для директории?
+    hash: string | null;
 
     /** Временная метка модификации */
     modified: number;

@@ -5,16 +5,15 @@ const debounce = function debounce<A extends any[], R extends any>(
     /** Демпфирующая задержка [мс] */
     delay: number
 ): (...args: A) => void {
-    let timer: NodeJS.Timeout | null = null;
+    let timer: NodeJS.Timeout;
     let pending = false;
 
-    const wrapper = function(...args: A) {
+    const wrapper = function(this: any, ...args: A) {
         clearTimeout(timer);
-
-        // console.log('this is', this);
 
         timer = setTimeout(async () => {
             if (pending) {
+
                 wrapper.apply(this, args);
 
                 return;

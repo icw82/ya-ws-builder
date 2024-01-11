@@ -8,6 +8,7 @@ import { makeMirror } from './makeMirror.js';
 import settings, { ISettings } from './settings.js';
 import { unlinkEmptySymlink } from './filesystem/unlinkEmptySymlink.js';
 import { getPathInModule } from './getPathInModule.js';
+import { instanceOfNodeError } from './filesystem/instanceOfNodeError.js';
 
 
 interface IFileObject {
@@ -96,9 +97,13 @@ const syncSourceFile = async (
             //     resolve(destCompiled)
             // );
         } catch (error) {
-            if (error.code !== 'ENOENT') {
-                console.log(error);
+            if (instanceOfNodeError(error, TypeError)) {
+                if (error.code === 'ENOENT') {
+                    return;
+                }
             }
+
+            console.error(error);
         }
     }
 };

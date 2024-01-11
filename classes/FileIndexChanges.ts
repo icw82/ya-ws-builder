@@ -32,6 +32,22 @@ class FileIndexChanges extends Map<TFilePath, IFileIndexChange> {
             );
         });
     }
+
+    *byTime(): IterableIterator<[TFilePath, IFileIndexChange]> {
+        const sorted = [
+            ...this.entries()
+        ].sort(([ , change1], [ , change2]): number => {
+            if (change1.isFolder === change1.isFolder) {
+                return change1.modified - change2.modified
+            } else {
+                return change1.isFolder ? -1 : 1;
+            }
+        });
+
+        for (const [path, change] of sorted) {
+            yield [path, change];
+        }
+    }
 }
 
 

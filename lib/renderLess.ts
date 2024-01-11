@@ -2,7 +2,6 @@ import { readFile } from 'node:fs';
 
 import { default as less } from 'less';
 
-
 const inlineSources = async (
     map: {
         sources: string[];
@@ -36,27 +35,33 @@ const inlineSources = async (
 
 };
 
-interface IRenderLessOptions {
-    compress?: boolean;
-    paths?: string[];
-    filename?: string;
-    sourceMap?: boolean;
-    dumpLineNumbers?: boolean;
-    pluginManager?: unknown;
-    // variables:
-    // strictUnits
-}
+type IRenderLessOptions = Parameters<typeof less.render>[1];
+// interface IRenderLessOptions {
+//     compress?: boolean;
+//     paths?: string[];
+//     filename?: string;
+//     sourceMap?: boolean;
+//     dumpLineNumbers?: boolean;
+//     pluginManager?: unknown;
+//     // variables:
+//     // strictUnits
+// }
 
 interface IRenderLessResult {
-    result: string;
-    imports: unknown[];
+    result?: string;
+    imports?: unknown[];
 }
+
 
 const renderLess = async (
     sourceString: string,
     options?: IRenderLessOptions
 ): Promise<IRenderLessResult> => new Promise((resolve, reject): void => {
-    const callback = (error, renderResult): void => {
+
+    const callback = (
+        error: Less.RenderError,
+        renderResult: Less.RenderOutput | undefined
+    ): void => {
         if (error) {
             reject(error);
 
@@ -66,11 +71,11 @@ const renderLess = async (
         // console.log('LESS callback result =>', result);
 
         const callbackResult: IRenderLessResult = {
-            result: renderResult.css,
-            imports: renderResult.imports,
+            result: renderResult?.css,
+            imports: renderResult?.imports,
         };
 
-        if (options?.sourceMap && renderResult.map) {
+        if (options?.sourceMap && renderResult?.map) {
             // obj.sourcemap = JSON.parse(result.map);
 
             // void inlineSources(obj.sourcemap).then((map) => {
@@ -83,7 +88,7 @@ const renderLess = async (
 
     };
 
-    return less.render(sourceString, options, callback);
+    return less.render(sourceString, options || {}, callback);
 });
 
 

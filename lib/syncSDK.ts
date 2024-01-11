@@ -18,7 +18,7 @@ const syncSDK = async (): Promise<void> => {
         sdkContent.map((item: string): Promise<void> => {
             if (settings.modules.has(item)) {
                 // Пропуск целевых модулей
-                return;
+                return Promise.resolve();
             }
 
             return makeMirror(

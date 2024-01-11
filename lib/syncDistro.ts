@@ -10,7 +10,11 @@ const syncDistro = async (): Promise<void> => {
         return;
     }
 
-    const distroModulesPath = join(settings.distro, 'Модули интерфейса');
+    const distroModulesPath = join(
+        settings.distro,
+        // 'Сконвертированные модули интерфейса'
+        'Модули интерфейса'
+    );
     const distroUiContent = readdirSync(distroModulesPath);
     const sdkContent = readdirSync(settings.sdkModulesPath);
 
@@ -18,12 +22,12 @@ const syncDistro = async (): Promise<void> => {
         distroUiContent.map((item: string): Promise<void> => {
             if (settings.modules.has(item)) {
                 // Пропуск целевых модулей
-                return;
+                return Promise.resolve();
             }
 
             if (sdkContent.includes(item)) {
                 // Пропуск модулей SDK
-                return;
+                return Promise.resolve();
             }
 
             return makeMirror(

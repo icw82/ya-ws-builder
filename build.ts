@@ -2,12 +2,14 @@ import { join } from 'node:path';
 
 import sanitize from 'sanitize-filename';
 
-import { FileWatcher } from './classes/FileWatcher.js';
+import { Builder } from './classes/Builder.js';
+import { Server } from './classes/Server.js';
 import { FileIndexCache } from './classes/FileIndexCache.js';
 import { handleSourceChanges } from './lib/handleFileIndexEvent.js';
 import { settings } from './lib/settings.js';
 import { syncDistro } from './lib/syncDistro.js';
 import { syncSDK } from './lib/syncSDK.js';
+import { processPageX } from './lib/processPageX.js';
 
 
 const main = async (): Promise<void> => {
@@ -32,12 +34,13 @@ const main = async (): Promise<void> => {
 
     const cache = new FileIndexCache({
         targets: settings.targets,
+        writeDebounceTime: 2000,
         path
     });
 
     // await cache.clear();
 
-    const index = new FileWatcher({
+    const builder = new Builder({
         targets: settings.targets,
         cache,
         watch: {
@@ -47,6 +50,13 @@ const main = async (): Promise<void> => {
         onChanges: handleSourceChanges,
     });
 
+
+    const server = new Server({
+        port: 3082,
+        processPageX
+    });
+
+    server.run();
 };
 
 void main();

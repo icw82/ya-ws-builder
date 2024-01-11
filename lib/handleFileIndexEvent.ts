@@ -1,4 +1,4 @@
-import { mkdir, readFile, rmdir } from 'node:fs/promises';
+import { access, mkdir, readFile, rm } from 'node:fs/promises';
 import {  dirname, extname, join } from 'node:path';
 
 import { minimatch } from 'minimatch';
@@ -36,31 +36,64 @@ const handleSourceChanges = async (
     } = change;
 
     const absolutePath = join(target.toString(), path);
+    const dest = join(
+        settings.destModulesPath,
+        path
+    ); //.replace(/\\/g, '/');
 
     if (isFolder) {
-        const dest = join(
-            settings.destModulesPath,
-            path
-        ); //.replace(/\\/g, '/');
-
         if (type === FileIndexEventType.removed) {
-            // console.log('Удаление папки?'+ Date.now());
+            console.log('Удаление папки', absolutePath);
+            // console.log('>', change);
 
-            await rmdir(dest, { recursive: true });
+            try {
+                await access(dest);
+                // Доступно,
+                await rm(dest, { recursive: true });
 
-        } else if (type === FileIndexEventType.added) {
-            // console.log('Добавление папки?'+ Date.now());
+            } catch (error) {
+                console.log('Нельзя удалить?');
+            }
 
-            await mkdir(dest, { recursive: true });
+            return true;
         }
 
-        return true;
+        if (type === FileIndexEventType.added) {
+            console.log('Добавление папки', absolutePath);
+            // console.log('>', change);
+
+            try {
+                await access(dest);
+                // Уже существует, ничего не делать
+                return true;
+            } catch (error) {
+                await mkdir(dest, { recursive: true });
+
+                return true;
+            }
+        }
+
+        if (type === FileIndexEventType.changed) {
+            // console.log('Изменение папки', absolutePath);
+            // Ничего не делать
+            return true;
+        }
     }
 
     if (type === FileIndexEventType.removed) {
-        console.log('Удаление файла?');
+        console.log('Удаление файла', absolutePath);
+        console.log('>', change);
 
-        return false;
+        try {
+            await access(dest);
+            // Доступно,
+            await rm(dest, { recursive: true });
+
+        } catch (error) {
+            console.log('Нельзя удалить?');
+        }
+
+        return true;
     }
 
     if (
@@ -99,11 +132,12 @@ const handleSourceChanges = async (
             const content = await renderLess(
                 '@import \'SBIS3.CONTROLS/themes/online/_variables\';' +
                 '@import \'Controls-default-theme/_mixins\';\n' +
-                // '@themeName: \'SHIT\';\n' +
+                '@themeName: \'SHIT\';\n' +
                 source,
                 {
                     paths: [
                         dirname(absolutePath),
+                        target.toString(),
                         settings.destModulesPath,
                         settings.sdkModulesPath,
                     ],
@@ -114,9 +148,15 @@ const handleSourceChanges = async (
 
             const dest = getDest(path, settings.destModulesPath);
 
-            await writeFileRecursive(dest, content.result);
+            if (content.result) {
+                await writeFileRecursive(dest, content.result);
 
-            return true;
+                return true;
+            } else {
+                console.error('LESS: Нет результата');
+
+                return false;
+            }
         }
 
         // Локализация
@@ -145,6 +185,8 @@ const handleSourceChanges = async (
     }
 
     console.error('Обработка события неизвестного типа:', change);
+
+    return false;
 }
 
 

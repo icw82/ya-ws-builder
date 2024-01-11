@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 
 
 const calculateFileHash = async (
-    filePath,
+    filePath: string,
     algorithm = 'sha256'
 ) => {
     const fileBuffer = await readFile(filePath);
